@@ -102,6 +102,48 @@ function getLastCrawlRun() {
   return stmt('SELECT * FROM crawl_runs ORDER BY id DESC LIMIT 1').get();
 }
 
+function _buildFilter(q, section) {
+  const where = [];
+  const params = [];
+
+  if (q) {
+    where.push('(title LIKE ? OR content LIKE ?)');
+    const pat = `%${q}%`;
+    params.push(pat, pat);
+  }
+
+  if (section) {
+    const sectionMap = {
+      news:           '%/news/%',
+      campaigns:      '%/campaign%',
+      'voter-guides': '%/voter-guide%',
+      cavoterid:      '%cavoterid%',
+    };
+    const pat = sectionMap[section];
+    if (pat) { where.push('url LIKE ?'); params.push(pat); }
+  }
+
+  return { whereClause: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
+}
+
+function searchPages({ q = '', section = '', limit = 50, offset = 0 } = {}) {
+  const db = getDb();
+  const { whereClause, params } = _buildFilter(q, section);
+  return db.prepare(`
+    SELECT url, title, last_crawled, content
+    FROM   pages
+    ${whereClause}
+    ORDER  BY last_crawled DESC
+    LIMIT  ? OFFSET ?
+  `).all(...params, limit, offset);
+}
+
+function countFilteredPages({ q = '', section = '' } = {}) {
+  const db = getDb();
+  const { whereClause, params } = _buildFilter(q, section);
+  return db.prepare(`SELECT COUNT(*) AS count FROM pages ${whereClause}`).get(...params).count;
+}
+
 function resetDb() {
   const db = getDb();
   db.transaction(() => {
@@ -126,6 +168,8 @@ module.exports = {
   getPageByUrl,
   listPages,
   getPageCount,
+  searchPages,
+  countFilteredPages,
   recordCrawlRun,
   getLastCrawlRun,
   resetDb,

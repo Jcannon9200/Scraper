@@ -3,7 +3,8 @@ const path = require('path');
 const express = require('express');
 const { Crawler } = require('./crawler');
 const { getDiff } = require('./monitor');
-const { getPageByUrl, listPages, getPageCount, getLastCrawlRun, resetDb } = require('./db');
+const { getPageByUrl, listPages, getPageCount, getLastCrawlRun, resetDb,
+        searchPages, countFilteredPages } = require('./db');
 const config = require('../config');
 
 const router = express.Router();
@@ -109,6 +110,34 @@ router.get('/status', (req, res) => {
         }
       : null,
   });
+});
+
+// GET /dashboard — browser UI
+router.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// GET /api/pages — search + filter endpoint used by the dashboard
+router.get('/api/pages', (req, res) => {
+  const { q = '', section = '', limit = '50', offset = '0' } = req.query;
+  const lim = Math.min(parseInt(limit, 10) || 50, 200);
+  const off = Math.max(parseInt(offset, 10) || 0, 0);
+
+  const rows  = searchPages({ q, section, limit: lim, offset: off });
+  const total = countFilteredPages({ q, section });
+
+  const pages = rows.map(row => {
+    let publicationDate = null;
+    let excerpt = '';
+    try {
+      const parsed = JSON.parse(row.content);
+      publicationDate = parsed.publicationDate ?? null;
+      excerpt = (parsed.bodyText || '').slice(0, 200).trim();
+    } catch {}
+    return { url: row.url, title: row.title, last_crawled: row.last_crawled, publicationDate, excerpt };
+  });
+
+  res.json({ total, count: pages.length, pages });
 });
 
 // DELETE /reset — wipe the SQLite knowledge base and all file snapshots
