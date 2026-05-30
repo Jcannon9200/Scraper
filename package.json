@@ -20,6 +20,7 @@
     "better-sqlite3": "^12.10.0",
     "cheerio": "^1.0.0",
     "diff": "^5.2.0",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "puppeteer": "^25.1.0"
   }
 }

@@ -13,23 +13,28 @@ const jobs = new Map();
 let jobCounter = 0;
 
 // POST /crawl
-// Body: { url?, maxDepth?, rateLimitMs? }
+// Body: { url?, maxDepth?, rateLimitMs?, headless? }
 router.post('/crawl', (req, res) => {
-  const { url = config.startUrl, maxDepth, rateLimitMs } = req.body || {};
+  const { url = config.startUrl, maxDepth, rateLimitMs, headless, forceRefresh } = req.body || {};
   const jobId = `job_${++jobCounter}_${Date.now()}`;
+  const useHeadless     = headless      === true || headless      === 'true';
+  const useForceRefresh = forceRefresh  === true || forceRefresh  === 'true';
 
-  const job = { id: jobId, status: 'running', startedAt: new Date().toISOString(), url };
+  const job = { id: jobId, status: 'running', startedAt: new Date().toISOString(), url, fetchMode: useHeadless ? 'puppeteer' : 'axios' };
   jobs.set(jobId, job);
 
   const crawler = new Crawler({
-    maxDepth: maxDepth !== undefined ? parseInt(maxDepth, 10) : undefined,
-    rateLimitMs: rateLimitMs !== undefined ? parseInt(rateLimitMs, 10) : undefined,
+    maxDepth:     maxDepth   !== undefined ? parseInt(maxDepth,   10) : undefined,
+    rateLimitMs:  rateLimitMs!== undefined ? parseInt(rateLimitMs,10) : undefined,
+    headless:     useHeadless,
+    forceRefresh: useForceRefresh,
   });
 
   res.status(202).json({
     jobId,
     status: 'running',
     url,
+    fetchMode: useHeadless ? 'puppeteer' : 'axios',
     message: `Crawl started. Poll GET /crawl/${jobId} for status.`,
   });
 

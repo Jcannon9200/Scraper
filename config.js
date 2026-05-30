@@ -6,6 +6,11 @@ module.exports = {
   requestTimeout: 10000,
   userAgent: 'WebCrawler/1.0 (github.com/your-username/web-crawler)',
   port: 3000,
+  // Set true to use Puppeteer (headless Chromium) instead of Axios.
+  // Captures JS-rendered content, dynamic dates, and lazy-loaded text.
+  // Slower than Axios — Chromium launches once per crawl and each page
+  // waits for networkidle2 before extraction.
+  headless: false,
   urlFilters: {
     // Empty = restrict to same domain as startUrl. Populate to allow specific domains.
     allowedDomains: [],
